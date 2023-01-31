@@ -1,0 +1,55 @@
+﻿@using SigmaExplorer.Shared
+
+<div class="container">
+    <div class="row">
+        <div class="col-lg-6 offset-lg-3">
+            <RadzenDataGrid Data=@assets IsLoading=@IsLoading TItem="GQLBoxesTokensAsset" AllowPaging="@AllowPaging" PageSize="@PageSize">
+                <Columns>
+                    <RadzenDataGridColumn TItem="GQLBoxesTokensAsset" Property="asset.token.tokenId" Title="Name">
+                        <Template Context="asset">
+                           <a class="link" href="@String.Format("token/byid/{0}",asset.token.tokenId)">@String.Format("{0}", asset.token.name)</a>
+                       </Template>
+                    </RadzenDataGridColumn>
+
+                    <RadzenDataGridColumn TItem="GQLBoxesTokensAsset" Property="asset.token.amount" Title="Amount" Width="180px" >
+                        <Template Context="asset">
+                            @String.Format("{0}", Convert.ToDouble(asset.amount) / Math.Pow(10,asset.token.decimals ?? 0))
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                </Columns>
+            </RadzenDataGrid>
+        </div>
+    </div>
+</div>
+
+
+<style>
+    .link {
+        color: #0078ff;
+    }
+</style>
+
+
+@code {
+    [Parameter]
+    public int PageSize { get; set; } = 15;
+    [Parameter]
+    public bool AllowPaging { get; set; } = true;
+    [Parameter]
+    public string Address { get; set; }
+
+    private int _dataCount = 0;
+    private List<GQLBoxesTokensAsset>? assets;
+    private bool IsLoading = false;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        IsLoading = true;
+        StateHasChanged();
+        assets = await GraphQLInterface.GetAllUnspentAssetsForAddress(Address);
+        IsLoading = false;
+        StateHasChanged();
+    }
+}

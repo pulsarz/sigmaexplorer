@@ -1,0 +1,122 @@
+﻿@using SigmaExplorer.Shared
+@implements IDisposable
+
+
+    <RadzenDataGrid @ref="grid" IsLoading=@IsLoading Data="@latestBlocks" TItem="GQLBlockMinimal" Count="@_dataCount" LoadData="@LoadData" AllowPaging="@AllowPaging" PageSize="@PageSize">
+        <Columns>
+            <RadzenDataGridColumn TItem="GQLBlockMinimal" Property="height" Title="Height" Width="90px" >
+                <Template Context="detail">
+                   <a class="link" href="@String.Format("blocks/byid/{0}",detail.headerId)">@String.Format("{0}", detail.height)</a>
+               </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="GQLBlockMinimal" Property="timestamp" Title="Timestamp" Width="170px" >
+                <Template Context="detail">
+                    @String.Format("{0}", Tools.UnixTimeStampMsToDateTime(Convert.ToDouble(detail.timestamp)))
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="GQLBlockMinimal" Property="txsCount" Title="Transactions" Width="140px" >
+                <Template Context="detail">
+                   <a class="link" href="@String.Format("transactions/byheaderid/{0}",detail.headerId)">@String.Format("{0}", detail.txsCount)</a>
+               </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="GQLBlockMinimal" Property="minerAddress" Title="Mined by" Width="170px"  >
+                <Template Context="detail">
+                    <a class="link" href="@String.Format("addresses/{0}",detail.minerAddress)">@String.Format("{0}", BlockTools.TryGetKnownMinerName(detail.minerAddress, true))</a>
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="GQLBlockMinimal" Property="minerReward" Title="Reward" Width="90px" >
+                <Template Context="detail">
+                    @String.Format("{0} ERG", Convert.ToDouble(detail.minerReward)/1000000000)
+                </Template>
+            </RadzenDataGridColumn>
+            @if (!SmallUI)
+            {
+                <RadzenDataGridColumn TItem="GQLBlockMinimal" Property="difficulty" Title="Difficulty" Width="170px" />
+                <RadzenDataGridColumn TItem="GQLBlockMinimal" Property="blockSize" Title="Size" Width="120px"  >
+                    <Template Context="detail">
+                        @String.Format("{0}KB", Math.Round(detail.blockSize/1024.0,2))
+                    </Template>
+                </RadzenDataGridColumn>
+            }
+    
+        </Columns>
+    </RadzenDataGrid>
+
+
+<style>
+    .link {
+        color: #0078ff;
+    }
+</style>
+
+
+@code {
+    [Parameter]
+    public int PageSize { get; set; } = 15;
+    [Parameter]
+    public bool SmallUI { get; set; } = false;
+    [Parameter]
+    public bool AllowPaging { get; set; } = true;
+    [Parameter]
+    public int AutoRefreshInterval { get; set; } = 0;
+
+    private List<GQLBlockMinimal>? latestBlocks;
+    private int _dataCount = 0;
+    private int lastHeight = 0;
+    private System.Threading.Timer timer = null;
+    private RadzenDataGrid<GQLBlockMinimal> grid;
+    private bool IsLoading = false;
+
+    public void Dispose()
+    {
+        timer?.Dispose();        // because you need it here
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        lastHeight = await BlockTools.GetCurrentHeight();
+        //Auto refresh dashboard
+        if (timer == null && AutoRefreshInterval > 0)
+        {
+            timer = new Timer(new TimerCallback(_ =>
+        {
+            InvokeAsync(async() =>
+            {
+            //only update if we have a new block
+                int currentHeight = await BlockTools.GetCurrentHeight();
+                if (currentHeight > lastHeight)
+                {
+                    await grid.Reload();
+                    lastHeight = currentHeight;
+                }
+            });
+        }), null, AutoRefreshInterval, AutoRefreshInterval);
+        }
+    }
+
+    async Task LoadData(LoadDataArgs args)
+    {
+        IsLoading = true;
+        Console.WriteLine($"Skip: {args.Skip}, Top: {args.Top}");
+
+        int take = args.Top.Value;
+        int skip = args.Skip.Value;
+
+        //Handle end of page
+        if (_dataCount > 0 && (take+skip) >= _dataCount)
+        {
+            //skip = _dataCount - take;
+            take = _dataCount - skip;
+        }
+
+        var list = await GraphQLInterface.GetLatestBlocks(take, skip);
+        if (list.First().height > _dataCount)
+        {
+            _dataCount = list.First().height;
+        }
+
+        latestBlocks = list;
+        StateHasChanged();
+        IsLoading = false;
+    }
+}

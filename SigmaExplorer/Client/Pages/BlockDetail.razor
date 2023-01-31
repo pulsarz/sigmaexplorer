@@ -1,0 +1,50 @@
+﻿@page "/blocks/{headerId}"
+@page "/en/blocks/{headerId}"
+@page "/blocks/byid/{headerId}"
+@page "/blocks/byheight/{height:int}"
+@using SigmaExplorer.Shared
+
+<PageTitle>Block detail</PageTitle>
+<RadzenText TextStyle="TextStyle.H4">@String.Format("Block #{0}",height)</RadzenText>
+
+@if (Block != null) {
+    <RadzenTabs TabPosition="TabPosition.Top" RenderMode="TabRenderMode.Client" >
+        <Tabs>
+            <RadzenTabsItem Text="Information">
+                <ErgoBlockDetail Block="@Block"/>
+            </RadzenTabsItem>
+
+            <RadzenTabsItem Text="Transactions">
+                <ErgoTransactions PageSize=50 HeaderId="@headerId"/>
+            </RadzenTabsItem>
+
+            <RadzenTabsItem Text="Extension">
+                <ErgoBlockDetailExtension Block="@Block"/>
+            </RadzenTabsItem>
+
+            <RadzenTabsItem Text="AD Proofs">
+                <ErgoBlockDetailADProof Block="@Block"/>
+            </RadzenTabsItem>
+        </Tabs>
+    </RadzenTabs>
+}
+else
+{
+    <div class="col-xl-12">Loading...</div>
+}
+
+@code {
+    [Parameter]
+    public string? headerId { get; set; }
+    [Parameter]
+    public int? height { get; set; }
+
+    private GQLBlockDetail Block = null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Block = await GraphQLInterface.GetBlock(headerId, height);
+        height = Block.height;
+        headerId = Block.header.headerId;
+    }
+}

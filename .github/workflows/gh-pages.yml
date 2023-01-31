@@ -34,3 +34,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH: gh-pages
           FOLDER: dist/Web/wwwroot
+          
+      - name: Commit wwwroot to GitHub Pages testnet
+        uses: JamesIves/github-pages-deploy-action@3.7.1
+        with:
+          token: ${{ secrets.TESTNETPAT }}
+          repository-name: pulsarz\sigmaexplorer-testnet
+          BRANCH: master
+          FOLDER: dist/Web/wwwroot

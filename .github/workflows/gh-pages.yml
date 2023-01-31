@@ -40,5 +40,5 @@ jobs:
         with:
           token: ${{ secrets.TESTNETPAT }}
           repository-name: pulsarz/sigmaexplorer-testnet
-          BRANCH: test
+          BRANCH: master
           FOLDER: dist/Web/wwwroot

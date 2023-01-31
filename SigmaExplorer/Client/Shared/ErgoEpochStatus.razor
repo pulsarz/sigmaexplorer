@@ -1,0 +1,60 @@
+﻿
+@using SigmaExplorer.Shared
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@implements IDisposable
+
+<RadzenArcGauge Style="width: 100%; height: 60px;">
+    <RadzenArcGaugeScale Step=@ErgoEpochLength Min="0" Max=@ErgoEpochLength MinorStep="1" Radius="1.5" TickPosition=@GaugeTickPosition.None Y="0.9" Margin="0">
+        <RadzenArcGaugeScaleValue Value=@CurrentEpochBlockHeight ShowValue=true>
+            <Template Context="pointer">
+                <h4>
+                    @String.Format("{0}%",(double)Math.Round(CurrentEpochBlockHeight/Convert.ToDouble(ErgoEpochLength)*100.0))
+                </h4>
+            </Template>
+        </RadzenArcGaugeScaleValue>
+    </RadzenArcGaugeScale>
+</RadzenArcGauge>
+
+@code {
+    [Parameter]
+    public int AutoRefreshInterval { get; set; } = 0;
+    private int CurrentEpochBlockHeight { get; set; } = 0;
+    private int ErgoEpochLength = 0;
+
+    private System.Threading.Timer timer = null;
+
+    public void Dispose()
+    {
+        timer?.Dispose();        // because you need it here
+    }
+
+    async Task UpateUIValues()
+    {
+        ErgoEpochLength = await BlockTools.GetErgoEpochLength();
+        int height = await BlockTools.GetCurrentHeight();
+        var oldVal = CurrentEpochBlockHeight;
+        CurrentEpochBlockHeight = (height % ErgoEpochLength) + 1;
+
+        if (oldVal != CurrentEpochBlockHeight) {
+            
+            StateHasChanged();//Only update if changed
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await UpateUIValues();
+
+        //Auto refresh dashboard
+		if (timer == null && AutoRefreshInterval > 0)
+		{
+			timer = new Timer(new TimerCallback(_ =>
+        {
+            InvokeAsync(async() =>
+            {
+               await UpateUIValues();
+            });
+        }), null, AutoRefreshInterval, AutoRefreshInterval);
+		}
+    }
+}

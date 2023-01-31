@@ -1,0 +1,41 @@
+﻿@page "/transactions/{txid}"
+@page "/en/transactions/{txid}"
+@page "/transactions/byid/{txid}"
+@page "/transactions/byheaderid/{headerId}"
+@page "/transactions/byaddress/{address}"
+
+<PageTitle>Transactions</PageTitle>
+
+@if(address != null && address != "") {
+	<RadzenText TextStyle="TextStyle.H4">@String.Format("Transactions by address {0}",address)</RadzenText>
+}
+else if (headerId != null && headerId != "")
+{
+	<RadzenText TextStyle="TextStyle.H4">@String.Format("Transactions in block #{0}",blockHeight)</RadzenText>
+}
+else if (txid != null && txid != "")
+{
+	<RadzenText TextStyle="TextStyle.H4">Transaction</RadzenText>
+}
+else
+{
+	<RadzenText TextStyle="TextStyle.H4">Transactions</RadzenText>
+}
+
+<ErgoTransactions PageSize=50 HeaderId="@headerId" Address="@address" TransactionID="@txid"/>
+
+@code {
+	[Parameter]
+	public string? headerId { get; set; }
+	[Parameter]
+	public string? address { get; set; }
+	[Parameter]
+	public string? txid { get; set; }
+
+	private int? blockHeight = null;
+
+	protected override async Task OnParametersSetAsync()
+	{
+		if (headerId != null) blockHeight = await BlockTools.ConvertBlockHeaderIdToHeight(headerId);
+	}
+}

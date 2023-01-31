@@ -1,0 +1,114 @@
+﻿
+@using SigmaExplorer.Shared
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@implements IDisposable
+
+<div class="row d-flex">
+    @if (CurrentDifficulty == 0) {
+        <div class="col-xl-12">Loading...</div>
+    }
+    else
+    {
+        <div class="col-xl-12">
+            @String.Format("Current difficulty: {0}",Tools.ConvertDifficultyToString(CurrentDifficulty))
+        </div>
+    }
+</div>
+
+<div class="row d-flex">
+    @if (CurrentHashrate == 0) {
+        <div class="col-xl-12">Loading...</div>
+    }
+    else
+    {
+        <div class="col-xl-12">
+            @String.Format("Daily network hashrate: {0}",Tools.ConvertHashrateToString(CurrentHashrate))
+        </div>
+    }
+</div>
+<div class="row d-flex">
+    @if (TimespanUntilNextEpoch == null) {
+        <div class="col-xl-12">Loading...</div>
+    }
+    else
+    {
+        <div class="col-xl-12">
+            @String.Format("Next difficulty adjustment in: {0:%d}d {0:%h}h {0:%m}m {0:%s}s",TimespanUntilNextEpoch)
+        </div>
+    }
+</div>
+
+<div class="row d-flex">
+    @if (EstimatedNextDifficulty == 0) {
+        <div class="col-xl-12">Loading...</div>
+    }
+    else
+    {
+        <div class="col-xl-12">
+            @String.Format("Next difficulty: {0} ({1:+0.00;-#.00}%)",Tools.ConvertDifficultyToString(EstimatedNextDifficulty),Math.Round(EstimatedNextDifficulty / CurrentDifficulty * 100.0 - 100.0, 2))
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int AutoRefreshInterval { get; set; } = 0;
+
+    private int CurrentHeight = 0;
+    private double CurrentDifficulty = 0;
+    private double EstimatedNextDifficulty = 0;
+    private double CurrentHashrate = 0;
+    private double CurrentHashrate3h = 0;
+    private TimeSpan? TimespanUntilNextEpoch { get; set; } = null;
+
+    private System.Threading.Timer timer = null;
+
+    //https://stackoverflow.com/questions/69093180/blazor-how-to-stop-a-timer-when-exiting-page
+    public void Dispose()
+    {
+        timer?.Dispose();        // because you need it here
+    }
+
+    async Task UpateUIValues()
+    {
+        int height = await BlockTools.GetCurrentHeight();
+        var PreviousHeight = CurrentHeight;
+
+        CurrentHeight = height;
+
+        //CalculateNextDifficultyPH
+
+        //always update
+        string diff = await BlockTools.GetCurrentDifficulty();
+        CurrentDifficulty = Convert.ToDouble(diff);
+        if (CurrentHeight != 0) TimespanUntilNextEpoch = await BlockTools.GetTimespanUntillNextEpoch(localStorage);
+
+        if (PreviousHeight != CurrentHeight)
+        {
+            //need to do next diff calc?
+            CurrentHashrate = await BlockTools.GetCurrentNetworkHashrate(localStorage);
+            EstimatedNextDifficulty = await DifficultyTools.CalculateNextDifficulty(localStorage);
+        }
+
+        StateHasChanged();
+
+        
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await UpateUIValues();
+
+        //Auto refresh dashboard
+		if (timer == null && AutoRefreshInterval > 0)
+		{
+			timer = new Timer(new TimerCallback(_ =>
+        {
+            InvokeAsync(async () =>
+            {
+               await UpateUIValues();
+            });
+        }), null, AutoRefreshInterval, AutoRefreshInterval);
+		}
+    }
+}

@@ -1,0 +1,104 @@
+﻿@using SigmaExplorer.Shared
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@implements IDisposable
+
+
+<div class="container">
+     @if (hashrateInfo == null || hashrateInfo.Count == 0) {
+        <div class="col-xl-12">Loading...</div>
+    }
+    else
+    {
+        
+    }
+    <div class="row">
+        <div class="col">
+        <RadzenChart>
+            <RadzenLineSeries Smooth=false  Data="@hashrateInfo" CategoryProperty="height" ValueProperty="hashrate" Title="Hashrate" LineType="LineType.Solid">
+                <TooltipTemplate Context="data">
+                    <div>
+                        <div>@data.height @data.timestamp</div>
+                        <div>Hashrate: <strong>@Tools.ConvertHashrateToString(data.hashrate)</strong></div>
+                    </div>
+                </TooltipTemplate>
+            </RadzenLineSeries>
+            <RadzenLegend Position="LegendPosition.Right" Visible=false />
+            <RadzenValueAxis Formatter="@FormatHashrateAxis">
+                <RadzenGridLines Visible="false" />
+                <RadzenAxisTitle Text="Hashrate" />
+            </RadzenValueAxis>
+        </RadzenChart>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col">
+            <RadzenChart>
+                <RadzenLineSeries Smooth=false  Data="@hashrateInfo" CategoryProperty="height" ValueProperty="difficulty" Title="Difficulty" LineType="LineType.Solid">
+                    <TooltipTemplate Context="data">
+                        <div>
+                            <div>@data.height @data.timestamp</div>
+                            <div>Difficulty: <strong>@Tools.ConvertDifficultyToString(data.difficulty)</strong></div>
+                        </div>
+                    </TooltipTemplate>
+                </RadzenLineSeries>
+                <RadzenLegend Position="LegendPosition.Right" Visible=false />
+                <RadzenValueAxis Formatter="@FormatDifficultyAxis">
+                    <RadzenGridLines Visible="false" />
+                    <RadzenAxisTitle Text="Difficulty" />
+                </RadzenValueAxis>
+            </RadzenChart>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    [Parameter]
+    public int AutoRefreshInterval { get; set; } = 0;
+
+    private List<HashrateInfo> hashrateInfo = new List<HashrateInfo>();
+    private int lastHeight = 0;
+    private System.Threading.Timer timer = null;
+
+    public void Dispose()
+    {
+        timer?.Dispose();        // because you need it here
+    }
+
+    string FormatDifficultyAxis(object value)
+    {
+        return Tools.ConvertDifficultyToString((double)value);
+    }
+
+    string FormatHashrateAxis(object value)
+    {
+        return Tools.ConvertHashrateToString((double)value);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        hashrateInfo = await BlockTools.GetHashrateInfoStatistics(localStorage);
+        StateHasChanged();
+
+        //Auto refresh dashboard
+        if (timer == null && AutoRefreshInterval > 0)
+        {
+            timer = new Timer(new TimerCallback(_ =>
+        {
+            InvokeAsync(async() =>
+            {
+            //only update if we have a new block
+                int currentHeight = await BlockTools.GetCurrentHeight();
+                if (currentHeight > lastHeight)
+                {
+                    lastHeight = currentHeight;
+
+                    hashrateInfo = await BlockTools.GetHashrateInfoStatistics(localStorage);
+                    StateHasChanged();
+                }
+            });
+        }), null, AutoRefreshInterval, AutoRefreshInterval);
+        }
+    }
+}

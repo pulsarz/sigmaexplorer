@@ -1,0 +1,15 @@
+﻿@page "/mempool"
+@page "/en/mempool"
+
+<PageTitle>Mempool</PageTitle>
+
+<h1>Mempool</h1>
+
+@*<ErgoMempoolTxes PageSize=15/>*@
+<ErgoTransactions PageSize=500 MempoolOnly=true/>
+
+@code {
+	protected override async Task OnParametersSetAsync()
+	{
+	}
+}

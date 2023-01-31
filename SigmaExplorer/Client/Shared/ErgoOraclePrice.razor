@@ -1,0 +1,66 @@
+﻿
+@using SigmaExplorer.Shared
+@implements IDisposable
+
+<div class="row d-flex">
+    @if (LatestData == null) {
+        <div class="col-xl-12">Loading...</div>
+    }
+    else
+    {
+        <div class="col-xl-12">
+            @String.Format("Latest price: $ {0}",Math.Round(LatestData.latest_price,2))
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int AutoRefreshInterval { get; set; } = 0;
+    [Parameter]
+    public string OracleName { get; set; } = "";
+    [Parameter]
+    public string OracleURL { get; set; } = "";
+
+    private System.Threading.Timer timer = null;
+    private OracleV1Data LatestData = null;
+    private int LastBlockHeight = 0;
+
+    public void Dispose()
+    {
+        timer?.Dispose();        // because you need it here
+    }
+
+    async Task UpateUIValues()
+    {
+        int blockHeight = await BlockTools.GetCurrentHeight();
+        if (blockHeight > LastBlockHeight)
+        {
+            LastBlockHeight = blockHeight;
+            //https://github.com/ergoplatform/explorer-frontend/blob/59a6a9f400dfa94a754b26df30e779927f1ab730/src/services/oraclePoolState.service.ts
+            OracleV1Data data = await OracleTools.GetOracleV1Info(OracleURL);
+            if (data != null)
+            {
+                LatestData = data;
+            }
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await UpateUIValues();
+
+        //Auto refresh dashboard
+        if (timer == null && AutoRefreshInterval > 0)
+        {
+            timer = new Timer(new TimerCallback(_ =>
+        {
+            InvokeAsync(async() =>
+            {
+                await UpateUIValues();
+            });
+        }), null, AutoRefreshInterval, AutoRefreshInterval);
+		}
+    }
+}

@@ -1,0 +1,16 @@
+﻿@page "/network_chart"
+
+<PageTitle>Network charts</PageTitle>
+
+<h1>Network charts</h1>
+
+@*<ErgoMempoolTxes PageSize=15/>*@
+<ErgoHashrateChart AutoRefreshInterval=@AutoRefreshInterval/>
+
+@code {
+	private int AutoRefreshInterval = 0;
+
+	protected override async Task OnParametersSetAsync()
+	{
+	}
+}

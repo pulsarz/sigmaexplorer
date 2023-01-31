@@ -1,0 +1,15 @@
+﻿@page "/latest_blocks"
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+
+<PageTitle>Latest blocks</PageTitle>
+
+<h1>Latest blocks</h1>
+
+<ErgoLatestBlocks PageSize=15/>
+
+@code {
+	protected override async Task OnParametersSetAsync()
+	{
+		await DifficultyTools.CalculateNextDifficulty(localStorage);
+	}
+}

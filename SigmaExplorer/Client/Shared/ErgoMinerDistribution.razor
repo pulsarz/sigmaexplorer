@@ -1,0 +1,82 @@
+﻿@using SigmaExplorer.Shared
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@implements IDisposable
+
+<div class="container">
+    <div class="row">
+        <div class="col">
+            <RadzenChart Style="@ChartStyle">
+                <RadzenDonutSeries Data="@minerDistribution" CategoryProperty="address" ValueProperty="blocks" Fills="@(new [] { "rgb(55,0,179)", "rgb(186,104,200)", "rgd(240,98,146)", "rgb(255,138,101)", "rgb(255,238,88)", "rgb(156,204,101)", "rgb(38,166,154)", "rgb(79,195,247)", "#003f5c", "#2f4b7c", "#795548", "#607d8b", "#f44336", "#ffc107"  })">
+                    <ChildContent>
+                        <RadzenSeriesDataLabels Visible=false />
+                    </ChildContent>
+                </RadzenDonutSeries>
+            </RadzenChart>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    [Parameter]
+    public int AutoRefreshInterval { get; set; } = 0;
+    [Parameter]
+    public string ChartStyle { get; set; } = "";
+
+    private List<MinerDistribution> minerDistribution = new List<MinerDistribution>();
+    private int lastHeight = 0;
+    private System.Threading.Timer timer = null;
+
+    public void Dispose()
+    {
+        timer?.Dispose();        // because you need it here
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        //Auto refresh dashboard
+        if (timer == null && AutoRefreshInterval > 0)
+        {
+            timer = new Timer(new TimerCallback(_ =>
+        {
+            InvokeAsync(async() =>
+            {
+            //only update if we have a new block
+                int currentHeight = await BlockTools.GetCurrentHeight();
+                var ErgoEpochLength = await BlockTools.GetErgoEpochLength();
+                if (currentHeight > lastHeight)
+                {
+                    lastHeight = currentHeight;
+
+                    List<MinerDistribution> data = new List<MinerDistribution>();
+
+                    List<GQLBlockTimestampOnly> LastBlocks = await BlockTools.GetLastBlocksForStatistics(localStorage, ErgoEpochLength);
+                    foreach (var block in LastBlocks)
+                    {
+                        var address = BlockTools.TryGetKnownMinerName(block.minerAddress, true);
+                        if (data.Exists(e => e.address == address))
+                        {
+                            data.Find(e => e.address == address).blocks++;
+                        }
+                        else
+                        {
+                            data.Add(new MinerDistribution { address=address, blocks=1 });
+                        }
+                    }
+
+                    foreach (var dist in data)
+                    {
+                        dist.address = String.Format("{0} ({1}%)",dist.address, Math.Round((double)dist.blocks / (double)ErgoEpochLength * 100,2));
+                    }
+
+                    data = data.OrderByDescending(e => e.blocks).ToList();
+                    minerDistribution = data;
+
+                    //load data
+                    StateHasChanged();
+                }
+            });
+        }), null, 0, AutoRefreshInterval);
+        }
+    }
+}

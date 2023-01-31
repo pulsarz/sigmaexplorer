@@ -1,0 +1,37 @@
+﻿@page "/addresses/{address}"
+@page "/en/addresses/{address}"
+
+<PageTitle>Address</PageTitle>
+
+
+<div class="container">
+    <div class="row">
+        <div class="col-lg-12">
+		    <ErgoAddressDetail Address="@address"/>
+
+            <RadzenTabs TabPosition="TabPosition.Top" RenderMode="TabRenderMode.Client" Style="margin-top: 10px;" >
+                <Tabs>
+                    <RadzenTabsItem Text="Transactions">
+                        <ErgoTransactions PageSize=5 Address="@address"/>
+                    </RadzenTabsItem>
+
+                    <RadzenTabsItem Text="Assets">
+                        <ErgoTokenList PageSize=50 Address="@address"/>
+                    </RadzenTabsItem>
+                </Tabs>
+            </RadzenTabs>
+        </div>
+    </div>
+</div>
+
+
+@code {
+	[Parameter]
+	public string? headerId { get; set; }
+	[Parameter]
+	public string? address { get; set; }
+
+	protected override async Task OnParametersSetAsync()
+	{
+	}
+}

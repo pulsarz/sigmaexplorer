@@ -60,6 +60,83 @@ public static class BlockTools
         return Globals.LastNetworkState.state.difficulty;
     }
 
+    //Retrieves multiple tokens in chunks of 20 tokens per api call. Much more efficient for retrieving lots of tokens at once.
+    public static async Task<List<GQLToken?>> GetTokensInfo(ILocalStorageService localStorage, List<string> tokenIds)
+    {
+        List<GQLToken>? LocalStorageTokens = null;
+        List<GQLToken?> tokens = new List<GQLToken>();
+        List<string> tokenIdsNotInCache = new List<string>();
+
+        await semaphoreTokenInfo.WaitAsync();
+
+        foreach (string tokenId in tokenIds)
+        {
+            bool bFound = false;
+            if (Globals.tokenCache.Exists(t => t.tokenId == tokenId))
+            {
+                bFound = true;
+                tokens.Add(Globals.tokenCache.Find(t => t.tokenId == tokenId).Clone());
+            }
+            else
+            {
+                if (LocalStorageTokens == null) LocalStorageTokens = await localStorage.GetItemAsync<List<GQLToken>>("tokenCache_" + Tools.GetHashSHA1String(Globals.GraphQLEndpoint));
+                if (LocalStorageTokens != null && LocalStorageTokens.Count > 0)
+                {
+                    if (LocalStorageTokens.Exists(t => t.tokenId == tokenId))
+                    {
+                        bFound = true;
+                        GQLToken token = LocalStorageTokens.Find(t => t.tokenId == tokenId);
+                        Globals.tokenCache.Add(token);//load it in the global so we dont have to make js calls again untill refresh
+                        tokens.Add(token.Clone());
+                    }
+                }
+            }
+
+            if (bFound == false)
+            {
+                //Need to retrieve it from api
+                tokenIdsNotInCache.Add(tokenId);
+            }
+        }
+
+        if (tokenIdsNotInCache.Count > 0)
+        {
+            List<GQLToken> newTokens = new List<GQLToken>();
+            for (var i = 0; i < tokenIdsNotInCache.Count; i += 20)
+            {
+                List<GQLToken>? retrievedTokens = await GraphQLInterface.GetTokenInfoByIds(tokenIdsNotInCache.Skip(i).Take(20).ToList());
+                if (retrievedTokens != null)
+                {
+                    newTokens.AddRange(retrievedTokens);
+                    tokens.AddRange(newTokens);
+                }
+            }
+
+            if (LocalStorageTokens == null)
+            {
+                LocalStorageTokens = await localStorage.GetItemAsync<List<GQLToken>>("tokenCache_" + Tools.GetHashSHA1String(Globals.GraphQLEndpoint));
+            }
+            if (LocalStorageTokens == null)
+            {
+                LocalStorageTokens = new List<GQLToken>();
+            }
+
+            foreach (GQLToken token in newTokens)
+            {
+                //Insert out token in the global token cache
+                Globals.tokenCache.Add(token);//load it in the global so we dont have to make js calls again untill refresh
+                //Add to local storage
+                LocalStorageTokens.Add(token);
+            }
+
+            await localStorage.SetItemAsync("tokenCache_" + Tools.GetHashSHA1String(Globals.GraphQLEndpoint), LocalStorageTokens);
+        }
+
+        semaphoreTokenInfo.Release();
+
+        return tokens;
+    }
+
     public static async Task<GQLToken?> GetTokenInfo(ILocalStorageService localStorage, string tokenId)
     {
         GQLToken? token = null;

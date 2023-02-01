@@ -643,6 +643,38 @@ public class GraphQLInterface
         }
     }
 
+    public static async Task<List<GQLToken>?> GetTokenInfoByIds(List<string> tokenIds)
+    {
+        var query = new GraphQLRequest
+        {
+            Query = @"
+                query TokensInfo($tokenIds: [String!]) {
+                  tokens(tokenIds: $tokenIds) {
+                    tokenId
+                    name
+                    decimals
+                    type
+                  }
+                }
+            ",
+            OperationName = "TokensInfo",
+            Variables = new
+            {
+                tokenIds = tokenIds.ToArray()
+            }
+        };
+
+        using (GraphQLHttpClient graphQLClient = new GraphQLHttpClient(Globals.GraphQLEndpoint, new SystemTextJsonSerializer()))
+        {
+            var graphQLResponse = await graphQLClient.SendQueryAsync<GQLTokenResult>(query);
+            if (graphQLResponse.Data.tokens == null || graphQLResponse.Data.tokens.Count == 0)
+            {
+                return null;
+            }
+            return graphQLResponse.Data.tokens;
+        }
+    }
+
 
     public static async Task<GQLTokenDetail?> GetTokenDetailById(string tokenId)
     {

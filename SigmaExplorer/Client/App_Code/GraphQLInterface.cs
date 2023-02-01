@@ -610,39 +610,6 @@ public class GraphQLInterface
         return addresses?.First();
     }
 
-    public static async Task<GQLToken?> GetTokenInfoById(string tokenId)
-    {
-        var query = new GraphQLRequest
-        {
-            Query = @"
-                query TokenInfo($tokenId: String) {
-                  tokens(tokenId: $tokenId) {
-                    tokenId
-                    name
-                    decimals
-                    type
-                  }
-                }
-            ",
-            OperationName = "TokenInfo",
-            Variables = new
-            {
-                tokenId = tokenId
-            }
-        };
-
-        using (GraphQLHttpClient graphQLClient = new GraphQLHttpClient(Globals.GraphQLEndpoint, new SystemTextJsonSerializer()))
-        {
-            var graphQLResponse = await graphQLClient.SendQueryAsync<GQLTokenResult>(query);
-            if (graphQLResponse.Data.tokens == null || graphQLResponse.Data.tokens.Count == 0)
-            {
-                return null;
-            }
-            GQLToken token = graphQLResponse.Data.tokens.First();
-            return token;
-        }
-    }
-
     public static async Task<List<GQLToken>?> GetTokenInfoByIds(List<string> tokenIds)
     {
         var query = new GraphQLRequest

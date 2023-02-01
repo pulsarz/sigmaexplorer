@@ -97,7 +97,7 @@
     async Task ShowTooltipWithHtml(ElementReference elementReference, List<GQLTransactionDetailAsset> assets, TooltipOptions options = null)
     {
         var infos = new List<(string, string, double)>();
-        List<GQLToken?> tokens = await BlockTools.GetTokensInfo(localStorage, assets.Select(x => x.tokenId).ToList());
+        List<GQLToken?> tokens = await BlockTools.GetTokensInfo(assets.Select(x => x.tokenId).ToList());
 
         foreach (var asset in assets)
         {

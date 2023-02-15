@@ -30,18 +30,16 @@ public class OracleV1Data
 
 public static class OracleTools
 {
+    private static readonly HttpClient _httpClient = new HttpClient();
     public static async Task<OracleV1Data> GetOracleV1Info(string url)
     {
         OracleV1Data data = null;
 
-        using (HttpClient client = new HttpClient())
+        var result = await _httpClient.GetFromJsonAsync<string>(url);
+        if (result != null && result != "")
         {
-            var result = await client.GetFromJsonAsync<string>(url);
-            if (result != null && result != "")
-            {
-                data = JsonSerializer.Deserialize<OracleV1Data>(result);
-            }
-        }
+            data = JsonSerializer.Deserialize<OracleV1Data>(result);
+         }
         return data;
     }
 

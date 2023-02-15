@@ -71,14 +71,12 @@ public static class BlockTools
 
         foreach (string tokenId in tokenIds)
         {
-            bool bFound = false;
-            if (Globals.tokenCache.Exists(t => t.tokenId == tokenId))
+            GQLToken temp = null;
+            if (Globals.tokenCache.TryGetValue(tokenId, out temp))
             {
-                bFound = true;
-                tokens.Add(Globals.tokenCache.Find(t => t.tokenId == tokenId).Clone());
+                tokens.Add(temp.Clone());
             }
-
-            if (bFound == false)
+            else
             {
                 //Need to retrieve it from api
                 tokenIdsNotInCache.Add(tokenId);
@@ -101,7 +99,7 @@ public static class BlockTools
             foreach (GQLToken token in newTokens)
             {
                 //Insert out token in the global token cache
-                Globals.tokenCache.Add(token);//load it in the global so we dont have to make js calls again untill refresh
+                Globals.tokenCache.Add(token.tokenId,token);//load it in the global so we dont have to make js calls again untill refresh
             }
         }
 
@@ -112,15 +110,12 @@ public static class BlockTools
 
     public static string TryGetKnownMinerName(string address, bool trimAddressLength)
     {
-        string name = address;
+        string name = address.Substring(address.Length - 8);
 
-        if (Globals.KnownMiners.Exists(t => t.address == address))
+        MinerInfo miner = null;
+        if (Globals.KnownMiners.TryGetValue(address, out miner))
         {
-            name = Globals.KnownMiners.Find(t => t.address == address).name;
-        }
-        else
-        {
-            name = address.Substring(address.Length - 8);
+            name = miner.name;
         }
 
         return name;
@@ -136,7 +131,7 @@ public static class BlockTools
 
     public static double GetAverageBlockTime(List<GQLBlockTimestampOnly> Blocks)
     {
-        List<double> timeDiffs = new List<double>();
+        List<double> timeDiffs = new List<double>(Blocks.Count-1);
         double previous = 0;
 
         Blocks = Blocks.OrderBy(e => Convert.ToDouble(e.timestamp)).ToList();
@@ -158,7 +153,7 @@ public static class BlockTools
     public static List<BlockTimeInfo> BuildBlockTimeInfoList(List<GQLBlockTimestampOnly> Blocks)
     {
         double previous = 0;
-        List<BlockTimeInfo> timeInfoList = new List<BlockTimeInfo>();
+        List<BlockTimeInfo> timeInfoList = new List<BlockTimeInfo>(Blocks.Count-1);
 
         Blocks = Blocks.OrderBy(e => Convert.ToDouble(e.timestamp)).ToList();
 
@@ -223,18 +218,6 @@ public static class BlockTools
                 //in sync
             }
 
-            /*
-            //todo: remove this check after thread safety is ensured
-            var anyDuplicate = blocks.GroupBy(x => x.height).Any(g => g.Count() > 1);
-            if (anyDuplicate)
-            {
-                Console.WriteLine("Found duplicate block in cache, doing full refresh!");
-                blocks = await GraphQLInterface.GetLatestBlockTimestamps(Globals.MaxBlocksToStoreForStatsInLocalStorage, 0, null, height);
-                IsUpdated = true;
-            }*/
-
-            //to be safe.
-            blocks = blocks.DistinctBy(e => e.height).ToList();
             if (blocks.Count > Globals.MaxBlocksToStoreForStatsInLocalStorage)
             {
                 blocks = blocks.Take(Globals.MaxBlocksToStoreForStatsInLocalStorage).ToList();
@@ -329,13 +312,14 @@ public static class BlockTools
 
     public static async Task<List<HashrateInfo>> GetHashrateInfoStatistics(ILocalStorageService localStorage)
     {
-        List<HashrateInfo> data = new List<HashrateInfo>();
         var blocks = await GetLastBlocksForStatistics(localStorage, Globals.MaxBlocksToStoreForStatsInLocalStorage);
         blocks = blocks.OrderBy(e => e.height).ToList();
 
         var ErgoEpochLength = await GetErgoEpochLength();
+        int step = 8;
 
-        for (var i = ErgoEpochLength; i < blocks.Count; i += 8)
+        List<HashrateInfo> data = new List<HashrateInfo>(blocks.Count / step);
+        for (var i = ErgoEpochLength; i < blocks.Count; i += step)
         {
             var hashrate = CalculateNetworkHashrate(blocks.Skip(i - ErgoEpochLength).Take(ErgoEpochLength).ToList());
             var hashrateTHs = Math.Round(hashrate / 1000 / 1000 / 1000 / 1000,2);

@@ -17,25 +17,7 @@ public static class ObjectExtensions
 public static class Tools
 {
     private static SemaphoreSlim semaphoreGQLEndpoint = new SemaphoreSlim(1, 1);
-   /* public static async Task<string> GetGraphQLEndpoint()
-    {
-        await semaphoreGQLEndpoint.WaitAsync();
-        Blazored.LocalStorage.ILocalStorageService localStorage = new Blazored.LocalStorage.ILocalStorageService();
-
-        if (Globals.GraphQLEndpoint == "")
-        {
-            Globals.GraphQLEndpoint = await localStorage.GetItemAsync<string>("GraphQLEndpoint");
-        }
-
-        if (Globals.GraphQLEndpoint == "")
-        {
-            Globals.GraphQLEndpoint = Globals.DefaultGraphQLEndpoint;
-        }
-
-        semaphoreGQLEndpoint.Release();
-
-        return Globals.GraphQLEndpoint;
-    }*/
+    private static readonly SHA1 _sha1 = SHA1.Create();
     public static DateTime UnixTimeStampMsToDateTime(double unixTimeStamp)
     {
         // The unix timestamp is how many seconds since the epoch time
@@ -105,15 +87,16 @@ public static class Tools
 
     public static byte[] GetHashSHA1(string inputString)
     {
-        using (HashAlgorithm algorithm = SHA1.Create())
-            return algorithm.ComputeHash(Encoding.UTF8.GetBytes(inputString));
+        return _sha1.ComputeHash(Encoding.UTF8.GetBytes(inputString));
     }
 
     public static string GetHashSHA1String(string inputString)
     {
         StringBuilder sb = new StringBuilder();
         foreach (byte b in GetHashSHA1(inputString))
+        {
             sb.Append(b.ToString("X2"));
+        }
 
         return sb.ToString();
     }

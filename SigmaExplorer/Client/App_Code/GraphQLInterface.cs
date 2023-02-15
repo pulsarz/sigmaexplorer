@@ -6,6 +6,8 @@ using SigmaExplorer.Shared;
 
 public class GraphQLInterface
 {
+    private static readonly GraphQLHttpClient _graphQLClient = new GraphQLHttpClient(Globals.GraphQLEndpoint, new SystemTextJsonSerializer());
+
     public static async Task<GQLStateWrapper> GetNetworkState()
     {
         var query = new GraphQLRequest
@@ -33,11 +35,9 @@ public class GraphQLInterface
             }
         };
 
-        using (GraphQLHttpClient graphQLClient = new GraphQLHttpClient(Globals.GraphQLEndpoint, new SystemTextJsonSerializer()))
-        {
-            var graphQLResponse = await graphQLClient.SendQueryAsync<GQLStateWrapper>(query);
-            return graphQLResponse.Data;
-        }
+
+        var graphQLResponse = await _graphQLClient.SendQueryAsync<GQLStateWrapper>(query);
+        return graphQLResponse.Data;
     }
     public static async Task<List<GQLBlockMinimal>> GetLatestBlocksBatch(int iTake, int iOffset)
     {
@@ -64,11 +64,9 @@ public class GraphQLInterface
                 take = iTake
             }
         };
-        using (GraphQLHttpClient graphQLClient = new GraphQLHttpClient(Globals.GraphQLEndpoint, new SystemTextJsonSerializer()))
-        {
-            var graphQLResponse = await graphQLClient.SendQueryAsync<GQLBlocksMinimalResult>(query);
-            return graphQLResponse.Data.blocks;
-        } 
+
+        var graphQLResponse = await _graphQLClient.SendQueryAsync<GQLBlocksMinimalResult>(query);
+        return graphQLResponse.Data.blocks;
     }
     public static async Task<List<GQLBlockMinimal>> GetLatestBlocks(int iCount, int iOffset=0)
     {
@@ -108,29 +106,27 @@ public class GraphQLInterface
             }
         };
 
-        using (GraphQLHttpClient graphQLClient = new GraphQLHttpClient(Globals.GraphQLEndpoint, new SystemTextJsonSerializer()))
-        {
-            var graphQLResponse = await graphQLClient.SendQueryAsync<GQLBlockTimestampOnlyResult>(query);
-            return graphQLResponse.Data?.blocks;
-        }
+        var graphQLResponse = await _graphQLClient.SendQueryAsync<GQLBlockTimestampOnlyResult>(query);
+        return graphQLResponse.Data?.blocks;
     }
+
     public static async Task<List<GQLBlockTimestampOnly>> GetLatestBlockTimestamps(int iMaxCount, int iOffset, int? minHeight, int? maxHeight)
     {
-        List<GQLBlockTimestampOnly> blocks = new List<GQLBlockTimestampOnly>();
+        var blocks = new List<GQLBlockTimestampOnly>();
+        
+        var remainingCount = iMaxCount;
 
-        for (var i = 0; i < iMaxCount;)
+        while (remainingCount > 0)
         {
-            List<GQLBlockTimestampOnly>? blocksBatch = await GetLatestBlockTimestampsBatch(Math.Min(Globals.GraphQLBatchSize, (iMaxCount - i)), iOffset + i, minHeight, maxHeight);
-            if (blocksBatch != null)
-            {
-                i += blocksBatch.Count;
-                blocks.AddRange(blocksBatch);
+            var batchSize = Math.Min(Globals.GraphQLBatchSize, remainingCount);
+            var blocksBatch = await GetLatestBlockTimestampsBatch(batchSize, iOffset + blocks.Count, minHeight, maxHeight);
 
-                if (blocksBatch.Count < Globals.GraphQLBatchSize)
-                {
-                    break;
-                }
-            }
+            if (blocksBatch == null || blocksBatch.Count == 0) break;
+
+            blocks.AddRange(blocksBatch);
+            remainingCount -= blocksBatch.Count;
+
+            if (blocksBatch.Count < batchSize) break;
         }
 
         return blocks;
@@ -179,11 +175,8 @@ public class GraphQLInterface
             }
         };
 
-        using (GraphQLHttpClient graphQLClient = new GraphQLHttpClient(Globals.GraphQLEndpoint, new SystemTextJsonSerializer()))
-        {
-            var graphQLResponse = await graphQLClient.SendQueryAsync<GQLBlockDetailResult>(query);
-            return graphQLResponse.Data.blocks.FirstOrDefault();
-        }
+        var graphQLResponse = await _graphQLClient.SendQueryAsync<GQLBlockDetailResult>(query);
+        return graphQLResponse.Data.blocks.FirstOrDefault();
     }
 
     public static async Task<int> CountTransactions(string? headerId, string? address)
@@ -207,11 +200,9 @@ public class GraphQLInterface
                 }
             };
 
-            using (GraphQLHttpClient graphQLClient = new GraphQLHttpClient(Globals.GraphQLEndpoint, new SystemTextJsonSerializer()))
-            {
-                var graphQLResponse = await graphQLClient.SendQueryAsync<GQLCountBlockTransactionsResult>(query);
-                return graphQLResponse.Data.blocks.First().txsCount;
-            }
+            var graphQLResponse = await _graphQLClient.SendQueryAsync<GQLCountBlockTransactionsResult>(query);
+            return graphQLResponse.Data.blocks.First().txsCount;
+           
         }
         else
         {
@@ -231,14 +222,9 @@ public class GraphQLInterface
                 }
             };
 
-            using (GraphQLHttpClient graphQLClient = new GraphQLHttpClient(Globals.GraphQLEndpoint, new SystemTextJsonSerializer()))
-            {
-                var graphQLResponse = await graphQLClient.SendQueryAsync<GQLCountAddressTransactionsResult>(query);
-                return graphQLResponse.Data.addresses.First().transactionsCount;
-            }
+            var graphQLResponse = await _graphQLClient.SendQueryAsync<GQLCountAddressTransactionsResult>(query);
+            return graphQLResponse.Data.addresses.First().transactionsCount;
         }
-
-        return 0;
     }
 
     public static async Task<int> CountMempoolTransactions(string? address)
@@ -257,11 +243,8 @@ public class GraphQLInterface
                 OperationName = "GetMempoolTXCount"
             };
 
-            using (GraphQLHttpClient graphQLClient = new GraphQLHttpClient(Globals.GraphQLEndpoint, new SystemTextJsonSerializer()))
-            {
-                var graphQLResponse = await graphQLClient.SendQueryAsync<GQLCountMempoolTransactionsResult>(query);
-                return graphQLResponse.Data.mempool.transactionsCount;
-            }
+            var graphQLResponse = await _graphQLClient.SendQueryAsync<GQLCountMempoolTransactionsResult>(query);
+            return graphQLResponse.Data.mempool.transactionsCount;
         }
         else
         {
@@ -283,15 +266,9 @@ public class GraphQLInterface
                 }
             };
 
-            using (GraphQLHttpClient graphQLClient = new GraphQLHttpClient(Globals.GraphQLEndpoint, new SystemTextJsonSerializer()))
-            {
-                var graphQLResponse = await graphQLClient.SendQueryAsync<GQLMempoolTransactionsResult>(query);
-                return graphQLResponse.Data.mempool.transactions.Count();
-            }
+            var graphQLResponse = await _graphQLClient.SendQueryAsync<GQLMempoolTransactionsResult>(query);
+            return graphQLResponse.Data.mempool.transactions.Count();
         }
-        
-
-        
     }
 
     public static async Task<List<GQLTransactionDetail>> GetTransactionsDetailBatch(int iTake, int iOffset, string? headerId, string? address, string? transactionId = null)
@@ -339,11 +316,8 @@ public class GraphQLInterface
             }
         };
 
-        using (GraphQLHttpClient graphQLClient = new GraphQLHttpClient(Globals.GraphQLEndpoint, new SystemTextJsonSerializer()))
-        {
-            var graphQLResponse = await graphQLClient.SendQueryAsync<GQLTransactionDetailResult>(query);
-            return graphQLResponse.Data.transactions;
-        }
+        var graphQLResponse = await _graphQLClient.SendQueryAsync<GQLTransactionDetailResult>(query);
+        return graphQLResponse.Data.transactions;
     }
     public static async Task<List<GQLTransactionDetail>> GetMempoolTransactionsDetailBatch(int iTake, int iOffset, string? address, string? transactionId = null)
     {
@@ -391,23 +365,22 @@ public class GraphQLInterface
             }
         };
 
-        using (GraphQLHttpClient graphQLClient = new GraphQLHttpClient(Globals.GraphQLEndpoint, new SystemTextJsonSerializer()))
-        {
-            var graphQLResponse = await graphQLClient.SendQueryAsync<GQLMempoolTransactionsResult>(query);
-            return graphQLResponse.Data.mempool.transactions;
-        }
+        var graphQLResponse = await _graphQLClient.SendQueryAsync<GQLMempoolTransactionsResult>(query);
+        return graphQLResponse.Data.mempool.transactions;
     }
     //mempool only
     public static async Task<List<GQLTransactionDetail>> GetAllMempoolTransactionsDetail()
     {
         List<GQLTransactionDetail> txes = new List<GQLTransactionDetail>();
-        var bDone = false;
-        while (!bDone)
+
+        do
         {
             List<GQLTransactionDetail> txesBatch = await GetMempoolTransactionsDetailBatch(Globals.GraphQLBatchSize, txes.Count, null, null);
             txes.AddRange(txesBatch);
-            if (txesBatch.Count < Globals.GraphQLBatchSize) bDone = true;
+            if (txesBatch.Count < Globals.GraphQLBatchSize) break;
         }
+        while (true);
+
         return txes;
     }
     //this only returns the value fields of the input and outputs, we need this to calculate the amount of inputs/outputs
@@ -439,23 +412,22 @@ public class GraphQLInterface
 
         //01/10/2022 removed inputs and outputs (both only index) this reduced time fro; 500ms to 80ms and size from 50kb to 6kb
 
-        using (GraphQLHttpClient graphQLClient = new GraphQLHttpClient(Globals.GraphQLEndpoint, new SystemTextJsonSerializer()))
-        {
-            var graphQLResponse = await graphQLClient.SendQueryAsync<GQLMempoolTransactionsResult>(query);
-            return graphQLResponse.Data.mempool.transactions;
-        }
+        var graphQLResponse = await _graphQLClient.SendQueryAsync<GQLMempoolTransactionsResult>(query);
+        return graphQLResponse.Data.mempool.transactions;
     }
     //mempool only
     public static async Task<List<GQLTransactionDetail>> GetAllMempoolTransactionsMinimalBatch()
     {
         List<GQLTransactionDetail> txes = new List<GQLTransactionDetail>();
-        var bDone = false;
-        while (!bDone)
+
+        do
         {
             List<GQLTransactionDetail> txesBatch = await GetMempoolTransactionsMinimalBatch(Globals.GraphQLBatchSize, txes.Count, null, null);
             txes.AddRange(txesBatch);
-            if (txesBatch.Count < Globals.GraphQLBatchSize) bDone = true;
+            if (txesBatch.Count < Globals.GraphQLBatchSize) break; // no more transactions to fetch
         }
+        while (true);
+
         //return txes ordered by newest first.
         return txes.OrderByDescending(e => Convert.ToDouble(e.timestamp)).ToList();
     }
@@ -463,24 +435,35 @@ public class GraphQLInterface
     public static async Task<List<GQLTransactionDetail>> GetAllTransactionsDetail(string? headerId, string? address, string? transactionId = null)
     {
         List<GQLTransactionDetail> txes = new List<GQLTransactionDetail>();
-        var bDone = false;
-        while (!bDone)
+
+        await Task.WhenAll(
+            GetTransactionsDetailBatchesAsync(txes, headerId, address, transactionId),
+            GetMempoolTransactionsDetailBatchesAsync(txes, address, transactionId)
+        );
+
+        return txes;
+    }
+
+    private static async Task GetTransactionsDetailBatchesAsync(List<GQLTransactionDetail> txes, string? headerId, string? address, string? transactionId)
+    {
+        do
         {
             List<GQLTransactionDetail> txesBatch = await GetTransactionsDetailBatch(Globals.GraphQLBatchSize, txes.Count, headerId, address, transactionId);
             txes.AddRange(txesBatch);
-            if (txesBatch.Count < Globals.GraphQLBatchSize) bDone = true;
+            if (txesBatch.Count < Globals.GraphQLBatchSize) break;
         }
+        while (true);
+    }
 
-        //if headerid = null then also include mempool txes, if txid given only execute if no results yet.
-        if ((headerId == null && transactionId == null) || (headerId == null && transactionId != null))
+    private static async Task GetMempoolTransactionsDetailBatchesAsync(List<GQLTransactionDetail> txes, string? address, string? transactionId)
+    {
+        do
         {
-            bDone = false;
             List<GQLTransactionDetail> txesBatch = await GetMempoolTransactionsDetailBatch(Globals.GraphQLBatchSize, txes.Count, address, transactionId);
             txes.AddRange(txesBatch);
-            if (txesBatch.Count < Globals.GraphQLBatchSize) bDone = true;
+            if (txesBatch.Count < Globals.GraphQLBatchSize) break;
         }
-
-        return txes;
+        while (true);
     }
     //Works for both confirmed and unconfirmed txes.
     public static async Task<GQLTransactionDetail?> GetTransaction(string transactionId)
@@ -559,13 +542,10 @@ public class GraphQLInterface
             }
         };
 
-        using (GraphQLHttpClient graphQLClient = new GraphQLHttpClient(Globals.GraphQLEndpoint, new SystemTextJsonSerializer()))
-        {
-            var graphQLResponse = await graphQLClient.SendQueryAsync<GQLTransactionDetailFullResult>(query);
-            var list = graphQLResponse.Data.transactions;
-            if (list.Count == 0) return null;
-            return list.First();
-        }
+        var graphQLResponse = await _graphQLClient.SendQueryAsync<GQLTransactionDetailFullResult>(query);
+        var list = graphQLResponse.Data.transactions;
+        if (list.Count == 0) return null;
+        return list.First();
     }
 
     public static async Task<List<GQLAddress>> GetAddresses(List<string> addresses)
@@ -597,11 +577,8 @@ public class GraphQLInterface
             }
         };
 
-        using (GraphQLHttpClient graphQLClient = new GraphQLHttpClient(Globals.GraphQLEndpoint, new SystemTextJsonSerializer()))
-        {
-            var graphQLResponse = await graphQLClient.SendQueryAsync<GQLAddressResult>(query);
-            return graphQLResponse.Data?.addresses;
-        }
+        var graphQLResponse = await _graphQLClient.SendQueryAsync<GQLAddressResult>(query);
+        return graphQLResponse.Data?.addresses;
     }
 
     public static async Task<GQLAddress> GetAddressInfo(string address)
@@ -631,15 +608,12 @@ public class GraphQLInterface
             }
         };
 
-        using (GraphQLHttpClient graphQLClient = new GraphQLHttpClient(Globals.GraphQLEndpoint, new SystemTextJsonSerializer()))
+        var graphQLResponse = await _graphQLClient.SendQueryAsync<GQLTokenResult>(query);
+        if (graphQLResponse.Data.tokens == null || graphQLResponse.Data.tokens.Count == 0)
         {
-            var graphQLResponse = await graphQLClient.SendQueryAsync<GQLTokenResult>(query);
-            if (graphQLResponse.Data.tokens == null || graphQLResponse.Data.tokens.Count == 0)
-            {
-                return null;
-            }
-            return graphQLResponse.Data.tokens;
+            return null;
         }
+        return graphQLResponse.Data.tokens;
     }
 
 
@@ -673,16 +647,13 @@ public class GraphQLInterface
             }
         };
 
-        using (GraphQLHttpClient graphQLClient = new GraphQLHttpClient(Globals.GraphQLEndpoint, new SystemTextJsonSerializer()))
+        var graphQLResponse = await _graphQLClient.SendQueryAsync<GQLTokenDetailResult>(query);
+        if (graphQLResponse.Data.tokens == null || graphQLResponse.Data.tokens.Count == 0)
         {
-            var graphQLResponse = await graphQLClient.SendQueryAsync<GQLTokenDetailResult>(query);
-            if (graphQLResponse.Data.tokens == null || graphQLResponse.Data.tokens.Count == 0)
-            {
-                return null;
-            }
-            GQLTokenDetail token = graphQLResponse.Data.tokens.First();
-            return token;
+            return null;
         }
+        GQLTokenDetail token = graphQLResponse.Data.tokens.First();
+        return token;
     }
 
     public static async Task<List<GQLBoxesTokensBox>?> GetUnspentBoxesForAssetsForAddress(int iTake, int iOffset, string address)
@@ -715,53 +686,33 @@ public class GraphQLInterface
             }
         };
 
-        using (GraphQLHttpClient graphQLClient = new GraphQLHttpClient(Globals.GraphQLEndpoint, new SystemTextJsonSerializer()))
+        var graphQLResponse = await _graphQLClient.SendQueryAsync<GQLBoxesTokensResult>(query);
+        if (graphQLResponse.Data.boxes == null || graphQLResponse.Data.boxes.Count == 0)
         {
-            var graphQLResponse = await graphQLClient.SendQueryAsync<GQLBoxesTokensResult>(query);
-            if (graphQLResponse.Data.boxes == null || graphQLResponse.Data.boxes.Count == 0)
-            {
-                return null;
-            }
-
-            return graphQLResponse.Data.boxes;
+            return null;
         }
+        
+        return graphQLResponse.Data.boxes;
     }
 
     public static async Task<List<GQLBoxesTokensAsset>> GetAllUnspentAssetsForAddress(string address)
     {
         List<GQLBoxesTokensBox> boxes = new List<GQLBoxesTokensBox>();
-        var bDone = false;
-        while (!bDone)
+
+        do
         {
             List<GQLBoxesTokensBox>? boxesBatch = await GetUnspentBoxesForAssetsForAddress(Globals.GraphQLBatchSize, boxes.Count, address);
-            if (boxesBatch == null)
-            {
-                bDone = true;
-                break;
-            }
+            if (boxesBatch == null) break;
             boxes.AddRange(boxesBatch);
-            if (boxes.Count < Globals.GraphQLBatchSize) bDone = true;
+            if (boxes.Count < Globals.GraphQLBatchSize) break;
         }
+        while (true);
 
-        boxes = boxes.DistinctBy(e => e.boxId).ToList();//needed?
-
-        List<GQLBoxesTokensAsset> assets = new List<GQLBoxesTokensAsset>();
-        foreach (var box in boxes)
-        {
-            foreach (var asset in box.assets)
-            {
-                if (assets.Exists(e => e.token.tokenId == asset.token.tokenId))
-                {
-                    //Exists, increase amount
-                    assets.Find(e => e.token.tokenId == asset.token.tokenId).amount += asset.amount;
-                }
-                else
-                {
-                    //Insert new
-                    assets.Add(new GQLBoxesTokensAsset { token = asset.token, amount = asset.amount });
-                }
-            }
-        }
+        List<GQLBoxesTokensAsset> assets = boxes
+        .SelectMany(box => box.assets)
+        .GroupBy(asset => asset.token.tokenId)
+        .Select(group => new GQLBoxesTokensAsset { token = group.First().token, amount = group.Sum(asset => Convert.ToDouble(asset.amount)).ToString() })
+        .ToList();
 
         return assets;
     }

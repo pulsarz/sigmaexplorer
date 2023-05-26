@@ -1,5 +1,6 @@
 ﻿@page "/"
 @using System.Threading;
+@using FleetSharp;
 @using SigmaExplorer.Shared;
 @inject NavigationManager NavigationManager
 @inject Blazored.LocalStorage.ILocalStorageService localStorage
@@ -138,29 +139,33 @@
 				}
 			}
 
-			//All that is left now is an address, check if it actually exists.
-			GQLAddress address = await GraphQLInterface.GetAddressInfo(value);
-			if (address != null && address.address == value)
+			var isValidAddress = ErgoAddress.validateBase58(value);
+			if (isValidAddress)
 			{
-				//todo check if used = true, if not show error or something? dunno.
-				//Found address
-				if (address.used == true) {
-
-					Console.WriteLine($"{value} is an address!");
-					NavigationManager.NavigateTo(String.Format("addresses/{0}",address.address));
-				}
-				else
+				/*GQLAddress address = await GraphQLInterface.GetAddressInfo(value);
+				if (address != null && address.address == value)
 				{
-					if (value.Length != 64)
+					//todo check if used = true, if not show error or something? dunno.
+					//Found address
+					if (address.used == true)
 					{
-						await Swal.FireAsync("Unused address", String.Format("{0} is an address but it has not been used yet!", value), "warning");
-						return;
+					*/
+						Console.WriteLine($"{value} is an address!");
+						NavigationManager.NavigateTo(String.Format("addresses/{0}", value));
+				/*}
+					else
+					{
+						if (value.Length != 64)
+						{
+							await Swal.FireAsync("Unused address", String.Format("{0} is an address but it has not been used yet!", value), "warning");
+							return;
+						}
 					}
-				}
-
-				
-				return;
+					*/
+					return;
+				//}
 			}
+
 
 			//if this was also not an address, check again if its a tx. if the length is 64 just open the tx page, it's probably a tx that is not im the mempool yet. Or so we hope.
 			if (value.Length == 64)

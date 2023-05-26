@@ -1,5 +1,8 @@
 ﻿
 @using SigmaExplorer.Shared
+@using static FleetSharp.Sigma.ConstantSerializer;
+@using static FleetSharp.Sigma.ISigmaCollection;
+@using static FleetSharp.Sigma.IPrimitiveSigmaType;
 
 @if (Token != null)
 {
@@ -51,9 +54,9 @@
                    
                 </RadzenCard>
             </div>
-             @if(Token.box.additionalRegisters.R9 != null && Token.box.additionalRegisters.R9 != "" && Token.box.additionalRegisters.R7 == "0e020101")
+             @if(Token.box.additionalRegisters?.R9 != null && Token.box.additionalRegisters?.R9 != "" && Token.box.additionalRegisters?.R7 == "0e020101")
              {
-                 var decoded = Tools.SigmaDecodeHexStringToUTF8(Token.box.additionalRegisters.R9);
+                string decoded = System.Text.Encoding.UTF8.GetString(SParse(Token.box.additionalRegisters.R9));
                  if (decoded != null && decoded.StartsWith("ipfs://"))
                  {
                      var url = String.Format("{0}/{1}", Globals.IPFSGateway, decoded.Replace("ipfs://",""));

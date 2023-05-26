@@ -61,13 +61,6 @@ public static class Tools
             .ToArray();
     }
 
-    public static string SigmaDecodeHexStringToUTF8(string hex)
-    {
-        byte[] bytes = StringToByteArray(hex);
-        bytes = bytes.Skip(2).ToArray();
-        return Encoding.UTF8.GetString(bytes);
-    }
-
     public static string? GetSubDomain(Uri url)
     {
 

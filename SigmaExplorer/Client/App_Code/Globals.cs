@@ -17,7 +17,7 @@ public class Globals
     //public static string GraphQLEndpoint = "https://gql.mempoolnode.live";//testnet
     //public static string GraphQLEndpoint = "https://ergo-explorer.getblok.io/graphql/";
     //public static string GraphQLEndpoint = "https://explore.sigmaspace.io/api/graphql";
-    public static string GraphQLEndpoint = "https://ergo-explorer.anetabtc.io/graphql";
+    public static string GraphQLEndpoint = "https://explorer-graphql.ergohost.io/";
 
     //public static string TestnetGraphQLEndpoint = "https://gql-testnet.ergoplatform.com";
     public static string TestnetGraphQLEndpoint = "https://tn-ergo-explorer.anetabtc.io/graphql";

@@ -19,8 +19,8 @@ public class Globals
     //public static string GraphQLEndpoint = "https://explore.sigmaspace.io/api/graphql";
     public static string GraphQLEndpoint = "https://explorer-graphql.ergohost.io/";
 
-    //public static string TestnetGraphQLEndpoint = "https://gql-testnet.ergoplatform.com";
-    public static string TestnetGraphQLEndpoint = "https://tn-ergo-explorer.anetabtc.io/graphql";
+    public static string TestnetGraphQLEndpoint = "https://gql-testnet.ergoplatform.com";
+    //public static string TestnetGraphQLEndpoint = "https://tn-ergo-explorer.anetabtc.io/graphql";
 
     public static int GraphQLBatchSize = 50;
     public static int UIRefreshInterval = 1000 * 1;
